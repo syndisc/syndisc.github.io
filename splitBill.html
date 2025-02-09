@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Split Bill Calculator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background-color: #f0f4f8;
+        color: #1a202c;
+        line-height: 1.5;
+      }
+      
+      .container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background-color: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+      }
+
+      h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #4a5568;
+        margin: 1.5rem 0 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+      }
+
+      input, select {
+        width: 200px;
+        padding: 0.5rem;
+        margin: 0.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.375rem;
+        background-color: #f8fafc;
+        transition: border-color 0.2s;
+      }
+
+      input:focus, select:focus {
+        outline: none;
+        border-color: #4299e1;
+        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+      }
+
+      button {
+        background-color: #4299e1;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      button:hover {
+        background-color: #3182ce;
+      }
+
+      button.remove {
+        background-color: #fc8181;
+        font-size: 0.875rem;
+        padding: 0.25rem 0.5rem;
+        margin-left: 0.5rem;
+      }
+
+      button.remove:hover {
+        background-color: #f56565;
+      }
+
+      table {
+        width: 100%;
+        margin-top: 1rem;
+        background-color: white;
+        border-radius: 0.5rem;
+        overflow: hidden;
+      }
+
+      th {
+        background-color: #f7fafc;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #4a5568;
+      }
+
+      td {
+        padding: 0.75rem 1rem;
+        border-top: 1px solid #e2e8f0;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .warning {
+        color: #e53e3e;
+        font-weight: 500;
+      }
+
+      .success {
+        color: #38a169;
+      }
+
+      .flex-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Split Bill Calculator</h2>
+
+      <h3>Add Orders</h3>
+      <div class="flex-group">
+        <input type="text" id="itemName" placeholder="Item Name" />
+        <input type="number" id="itemPrice" placeholder="Price" />
+        <input type="number" id="itemQuantity" placeholder="Quantity" value="1" />
+        <button onclick="addOrder()">Add Order</button>
+      </div>
+
+      <h3>Orders</h3>
+      <ul id="orderList"></ul>
+
+      <h3>Add People</h3>
+      <div class="flex-group">
+        <input type="text" id="personName" placeholder="Person Name" />
+        <button onclick="addPerson()">Add Person</button>
+      </div>
+
+      <h3>People</h3>
+      <ul id="peopleListDisplay"></ul>
+
+      <h3>Assign Orders</h3>
+      <div class="flex-group">
+        <select id="peopleList"></select>
+        <select id="orderSelect"></select>
+        <button onclick="assignOrder()">Assign</button>
+      </div>
+
+      <h3>Assigned Orders</h3>
+      <ul id="assignedOrders"></ul>
+
+      <h3>Order Assignment Check</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Food Item</th>
+            <th>Required</th>
+            <th>Assigned</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="assignmentTable"></tbody>
+      </table>
+
+      <h3>Tax & Service Charge</h3>
+      <div class="flex-group">
+        <input type="number" id="taxAmount" placeholder="Tax Amount" value="0" />
+        <input type="number" id="serviceAmount" placeholder="Service Charge" value="0" />
+        <button onclick="calculateFinalAmount()">Calculate Final Bill</button>
+      </div>
+
+      <h3>Final Split</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th>Order Total</th>
+            <th>Tax Share</th>
+            <th>Service Share</th>
+            <th>Final Amount</th>
+          </tr>
+        </thead>
+        <tbody id="finalBillTable"></tbody>
+      </table>
+    </div>
+
+    <script>
+      let orders = JSON.parse(sessionStorage.getItem("orders")) || [];
+      let people = JSON.parse(sessionStorage.getItem("people")) || {};
+      document.getElementById("taxAmount").value = parseFloat(sessionStorage.getItem("taxAmount")) || 0;
+      document.getElementById("serviceAmount").value = parseFloat(sessionStorage.getItem("serviceAmount")) || 0;
+
+      function saveData() {
+        sessionStorage.setItem("orders", JSON.stringify(orders));
+        sessionStorage.setItem("people", JSON.stringify(people));
+      }
+
+      function addOrder() {
+        const name = document.getElementById("itemName").value;
+        const price = parseFloat(document.getElementById("itemPrice").value);
+        const quantity = parseInt(document.getElementById("itemQuantity").value);
+
+        if (!name || price <= 0 || quantity <= 0) return;
+        orders.push({ name, price, quantity, assigned: 0 });
+        saveData();
+        updateOrderList();
+        updateAssignmentWarning();
+      }
+
+      function addPerson() {
+        const name = document.getElementById("personName").value;
+        if (!name || people[name]) return;
+        people[name] = [];
+        saveData();
+        updatePeopleList();
+      }
+
+      function assignOrder() {
+        const person = document.getElementById("peopleList").value;
+        const orderIndex = document.getElementById("orderSelect").value;
+
+        if (!person || orderIndex === "") return;
+        const order = orders[orderIndex];
+
+        if (!people[person]) people[person] = [];
+
+        const currentCount = people[person].filter((o) => o.name === order.name).length;
+        if (currentCount < order.quantity) {
+          people[person].push({ name: order.name, price: order.price });
+          order.assigned += 1;
+          saveData();
+          updateAssignedOrders();
+          updateAssignmentWarning();
+        }
+      }
+
+      function removeAssignedOrder(person, orderName) {
+        if (!people[person]) return;
+
+        const index = people[person].findIndex((o) => o.name === orderName);
+        if (index !== -1) {
+          people[person].splice(index, 1);
+
+          const order = orders.find((o) => o.name === orderName);
+          if (order && order.assigned > 0) {
+            order.assigned -= 1;
+          }
+
+          saveData();
+          updateAssignedOrders();
+          updateAssignmentWarning();
+        }
+      }
+
+      function updateOrderList() {
+        let total = 0;
+        
+        document.getElementById("orderList").innerHTML = orders
+          .map((order) => {
+            total += order.price * order.quantity;
+            return `<li class="flex justify-between items-center">
+              <span>${order.name} - Rp. ${order.price.toLocaleString()} x ${order.quantity} pcs</span>
+              <span>Rp. ${(order.price * order.quantity).toLocaleString()}</span>
+            </li>`;
+          })
+          .join("") + 
+          `<li class="font-semibold mt-4">
+            Grand Total: Rp. ${total.toLocaleString()}
+          </li>`;
+
+        document.getElementById("orderSelect").innerHTML = orders
+          .map((order, index) => `<option value="${index}">${order.name}</option>`)
+          .join("");
+      }
+
+      function updatePeopleList() {
+        document.getElementById("peopleList").innerHTML = Object.keys(people)
+          .map((name) => `<option value="${name}">${name}</option>`)
+          .join("");
+
+        document.getElementById("peopleListDisplay").innerHTML = Object.keys(people)
+          .map((name) => `<li>${name}</li>`)
+          .join("");
+      }
+
+      function updateAssignedOrders() {
+        document.getElementById("assignedOrders").innerHTML = Object.entries(people)
+          .map(([name, orders]) => `
+            <li class="mb-4">
+              <div class="font-semibold mb-2">${name}:</div>
+              ${orders.map((o) => `
+                <div class="flex justify-between items-center py-1">
+                  <span>${o.name} (Rp. ${o.price})</span>
+                  <button class="remove" onclick="removeAssignedOrder('${name}', '${o.name}')">Remove</button>
+                </div>
+              `).join("")}
+            </li>
+          `)
+          .join("");
+      }
+
+      function updateAssignmentWarning() {
+        const assignmentTable = document.getElementById("assignmentTable");
+        assignmentTable.innerHTML = "";
+
+        orders.forEach((order) => {
+          let status = order.assigned === order.quantity
+            ? '<span class="success">✓ Correct</span>'
+            : order.assigned < order.quantity
+            ? '<span class="warning">⚠ Not Fully Assigned</span>'
+            : '<span class="warning">⚠ Over Assigned</span>';
+
+          assignmentTable.innerHTML += `
+            <tr>
+              <td>${order.name}</td>
+              <td>${order.quantity}</td>
+              <td>${order.assigned}</td>
+              <td>${status}</td>
+            </tr>`;
+        });
+      }
+
+      function calculateFinalAmount() {
+        const tax = parseFloat(document.getElementById("taxAmount").value) || 0;
+        const service = parseFloat(document.getElementById("serviceAmount").value) || 0;
+
+        let totalOrderPrice = orders.reduce((sum, order) => sum + order.price * order.quantity, 0);
+
+        const finalBillTable = document.getElementById("finalBillTable");
+        finalBillTable.innerHTML = "";
+
+        let orderTotal = 0;
+        let taxTotal = 0;
+        let serviceTotal = 0;
+        let grandTotal = 0;
+
+        Object.entries(people).forEach(([name, assignedOrders]) => {
+          let personTotal = assignedOrders.reduce((sum, o) => sum + o.price, 0);
+          let taxShare = (personTotal / totalOrderPrice) * tax;
+          let serviceShare = (personTotal / totalOrderPrice) * service;
+          let finalAmount = personTotal + taxShare + serviceShare;
+
+          orderTotal += personTotal;
+          taxTotal += taxShare;
+          serviceTotal += serviceShare;
+          grandTotal += finalAmount;
+
+          finalBillTable.innerHTML += `
+            <tr>
+              <td>${name}</td>
+              <td>Rp. ${personTotal.toLocaleString()}</td>
+              <td>Rp. ${taxShare.toLocaleString()}</td>
+              <td>Rp. ${serviceShare.toLocaleString()}</td>
+              <td class="font-semibold">Rp. ${finalAmount.toLocaleString()}</td>
+            </tr>`;
+        });
+
+        finalBillTable.innerHTML += `
+          <tr class="font-semibold bg-gray-50">
+            <td>Grand Total</td>
+            <td>Rp. ${orderTotal.toLocaleString()}</td>
+            <td>Rp. ${taxTotal.toLocaleString()}</td>
+            <td>Rp. ${serviceTotal.toLocaleString()}</td>
+            <td>Rp. ${grandTotal.toLocaleString()}</td>
+          </tr>`;
+
+        sessionStorage.setItem("taxAmount", tax);
+        sessionStorage.setItem("serviceAmount", service);
+      }
+
+      updateOrderList();
+      updatePeopleList();
+      updateAssignedOrders();
+      updateAssignmentWarning();
+    </script>
+  </body>
+</html>
