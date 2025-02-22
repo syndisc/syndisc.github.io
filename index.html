@@ -208,6 +208,44 @@
         sessionStorage.setItem("people", JSON.stringify(people));
       }
 
+      function deleteOrder(index) {
+        const orderName = orders[index].name;
+        
+        // Remove all assignments of this order from people
+        Object.keys(people).forEach(person => {
+          people[person] = people[person].filter(order => order.name !== orderName);
+        });
+        
+        // Remove the order
+        orders.splice(index, 1);
+        
+        saveData();
+        updateOrderList();
+        updateAssignedOrders();
+        updateAssignmentWarning();
+      }
+
+      function deletePerson(name) {
+        // Check if person has any assigned orders
+        if (people[name] && people[name].length > 0) {
+          // Decrease assigned count for each order
+          people[name].forEach(assignedOrder => {
+            const order = orders.find(o => o.name === assignedOrder.name);
+            if (order) {
+              order.assigned -= 1;
+            }
+          });
+        }
+        
+        // Delete the person
+        delete people[name];
+        
+        saveData();
+        updatePeopleList();
+        updateAssignedOrders();
+        updateAssignmentWarning();
+      }
+
       function addOrder() {
         const name = document.getElementById("itemName").value;
         const price = parseFloat(document.getElementById("itemPrice").value);
@@ -269,11 +307,14 @@
         let total = 0;
         
         document.getElementById("orderList").innerHTML = orders
-          .map((order) => {
+          .map((order, index) => {
             total += order.price * order.quantity;
             return `<li class="flex justify-between items-center">
               <span>${order.name} - Rp. ${order.price.toLocaleString()} x ${order.quantity} pcs</span>
-              <span>Rp. ${(order.price * order.quantity).toLocaleString()}</span>
+              <div>
+                <span>Rp. ${(order.price * order.quantity).toLocaleString()}</span>
+                <button class="remove" onclick="deleteOrder(${index})">Delete</button>
+              </div>
             </li>`;
           })
           .join("") + 
@@ -292,7 +333,11 @@
           .join("");
 
         document.getElementById("peopleListDisplay").innerHTML = Object.keys(people)
-          .map((name) => `<li>${name}</li>`)
+          .map((name) => `
+            <li class="flex justify-between items-center">
+              <span>${name}</span>
+              <button class="remove" onclick="deletePerson('${name}')">Delete</button>
+            </li>`)
           .join("");
       }
 
